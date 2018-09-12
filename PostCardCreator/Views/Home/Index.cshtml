@@ -1,0 +1,335 @@
+﻿@{
+    ViewBag.Title = "Home Page";
+}
+@{
+    string emailPattern = @"[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,4}";
+}
+
+<div class="jumbotron text-center">
+    <h1>Create Post Cards</h1>
+    <p class="lead">This is a web application for sending pictures as postcards to an email.</p>
+    <p>Picture sources include, Webcam and File uploads</p>
+    <p>You can add text after pictures have been uploaded or captured</p>
+    <p>You must enter the recipient's email</p>
+    <p>Choosing must enter sender's email (unless a default sender is choosen) </p>
+    <p>Have Fun</p>
+</div>
+
+<div class="row">
+    <label id="userMsg"  style="text-align:center; color:red"></label>
+    <br />
+
+    <form onsubmit="return false" class="text-center">
+        <label> Sender's email:  <input type="email" id="sender" required placeholder="email@abc.com" pattern=@emailPattern /> &nbsp; &nbsp; </label>
+        <label> Recipient's email:  <input type="email" id="recipient" required placeholder="email@abc.com" pattern=@emailPattern /> </label>
+        <button type="submit" onclick="Post()"> Post </button>
+    </form>
+
+    <br /> <br />
+           <div class="col-lg-4" style="border: 1px solid green; padding: 20px; background-color: lightblue">
+               <label> Choose Image Option</label>
+               <select id="imgOptions" onchange="displaySource(this)">
+                   <option value="select">Select</option>
+                   <option value="wCam">Webcam</option>
+                   <option value="fUpload">FIle Upload</option>
+               </select>
+               <br /> <br />
+               @*for webcam*@
+               <div id="wCam" style="display:none">
+                   <p>
+                       <button onclick="startWebcam();">Start WebCam</button>
+                       <button onclick="stopWebcam();">Stop WebCam</button>
+                       <button onclick="getSnapshot();">Take Snapshot</button> <br />
+                   </p>
+               </div>
+
+               @*for file upload*@
+               <div id="fUpload" style="display:none">
+                   <input type="file" id="imgFile" accept=".jpg,.jpeg,.png,.svg">
+               </div>
+
+
+           </div>
+
+    <div class="col-lg-8" style="border: 1px solid green; padding: 20px">
+      
+        <div id="preview">
+            <p style="text-center">
+                Preview :
+            <p>
+        </div>
+        
+       
+        <div>
+            <p style="text-center">
+                Screenshots :
+            <p>
+                <div class="text-center">
+                    <canvas id="myCanvas" width="400" height="450"></canvas>
+                    <div id="msgSection" style="display:none">
+                        <label>Enter a message for the post card &nbsp;</label>
+                        <input type="text" id="message" onkeyup="read(this)" />
+                    </div>
+                </div>
+        </div>
+            
+</div>
+</div>
+
+
+
+
+<script>
+        // Get the canvas and obtain a context for
+        // drawing in it
+        var canvas = document.getElementById("myCanvas");
+        var ctx = canvas.getContext('2d');
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        var webcamStream;
+        var video;
+        var webcamStream;
+        var vidDiv;
+        var preview = document.getElementById('preview');
+        var sendEmailUrl = '/api/PostCard/SendEmail';
+        var imgChosen = false;
+
+
+        //handle image source selection
+    function displaySource(selectObject) {
+             imgChosen = false;
+            var selectedValue = selectObject.value;
+            //clear picture and text
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById("message").value = "";
+            if (selectedValue != 'select') {
+                document.getElementById(selectedValue).style.display = "block";
+                //hide other sources
+                var x = document.getElementById("imgOptions");
+                var i;
+                for (i = 0; i < x.length; i++) {
+                    id = x.options[i].value;
+                    if (id != selectedValue && id != 'select') {
+                        //console.log(id);
+                        document.getElementById(id).style.display = "none";
+                    }
+                }
+            }
+        }
+
+    //on image upload
+    document.getElementById('imgFile').onchange = function (e) {
+        var img = new Image();
+        img.onload = function () {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height - 100);
+            document.getElementById("msgSection").style.display = "block";
+            imgChosen = true;
+        }
+        img.onerror = function () {
+            document.getElementById("userMsg").innerHTML = "The provided file couldn't be loaded as an Image media";
+            //console.error("The provided file couldn't be loaded as an Image media");
+        };
+        img.src = URL.createObjectURL(this.files[0]);
+    }
+
+
+    //read from textfile to write on canvas
+    function read(element) {
+        if (ctx != null) {
+            //font and fillstyle can be changed
+            ctx.font = '20pt Calibri';
+            ctx.fillStyle = 'blue';
+            if (element.value != '' && element.value != ' ') {
+                //console.log(element.value);
+                ctx.clearRect(0, 351, 400, 99);
+                ctx.fillText(element.value, 10, 370);
+            }
+            else {
+                ctx.clearRect(0, 351, 400, 99);
+            }
+        }
+
+    }
+
+    //call post card controller to send image to email
+    function Post() {
+       // console.log("here");
+        var mailFrom = document.getElementById("sender").value;
+        console.log(mailFrom);
+        var mailTo = document.getElementById("recipient").value;
+        if (imgChosen == true) {
+            var imgUrl = canvas.toDataURL();
+            $.ajax({
+                type: "POST",
+                url: sendEmailUrl,
+                contentType: "application/json; charset=utf-8",
+                data: JSON.stringify({
+                    imgData: imgUrl,
+                    emailTo: mailTo,
+                    emailFrom: mailFrom
+                }),
+                dataType: "json",
+                success: function () {
+                    document.getElementById("userMsg").style.color = "green";
+                    document.getElementById("userMsg").innerHTML = "Success";
+                    //alert('Success');
+                },
+                error: function () {
+                    document.getElementById("userMsg").innerHTML = "There was an error in sending datat to server";
+                }
+            });
+        }
+        else {
+            document.getElementById("userMsg").innerHTML ="Choose an image";
+        }
+    }
+
+      //webcam section
+        //using webRTC or flash fall-back to accomodate all browsers
+        var options = {
+
+            "audio": false,
+            "video": true,
+
+            // the element (by id) you wish to use for
+            // displaying the stream from a camera
+            el: "webcam",
+
+            extern: null,
+            append: true,
+
+            // height and width of the output stream container
+
+            width: 320,
+            height: 240,
+
+            // the recommended mode to be used is
+            // 'callback', where a callback is executed
+            // once data is available
+            mode: "callback",
+
+            // the flash fallback URL
+            swffile: "/Scripts/fallback/jscam_canvas_only.swf",
+
+            // quality of the fallback stream
+            quality: 85,
+
+            // a debugger callback is available if needed
+            //debug: function () { },
+
+            // callback for capturing the fallback stream
+            onCapture: function () {
+                window.webcam.save();
+            },
+
+            // callback for saving the stream, useful for
+            // relaying data further.
+            onSave: function (data) {
+                var col = data.split(";"),
+                    img = image,
+                    tmp = null,
+                    w = this.width,
+                    h = this.height;
+
+                for (var i = 0; i < w; i++) {
+                    tmp = parseInt(col[i], 10);
+                    img.data[pos + 0] = (tmp >> 16) & 0xff;
+                    img.data[pos + 1] = (tmp >> 8) & 0xff;
+                    img.data[pos + 2] = tmp & 0xff;
+                    img.data[pos + 3] = 0xff;
+                    pos += 4;
+                }
+
+                if (pos >= 4 * w * h) {
+                    ctx.putImageData(img, 0, 0);
+                    pos = 0;
+                }
+            },
+            onLoad: function () { }
+        };
+
+        //call-back function for webcam option
+        function successWebCam(stream) {
+            webcamStream = stream;
+             if (options.context === 'webrtc') {
+                var video = options.videoEl;
+                var vendorURL = window.URL || window.webkitURL;
+                 video.srcObject = stream;
+
+                video.onerror = function () {
+                    stream.getVideoTracks()[0].stop();
+                    //streamError();
+                };
+
+             } else {
+                // Flash context
+            }
+        }
+
+    //for starting the webcam
+    function startWebcam() {
+        vidDiv = document.createElement('object');
+        vidDiv.setAttribute("id", "webcam");
+        preview.appendChild(vidDiv);
+        getUserMedia(options, successWebCam, errorWebCam);
+        imgChosen = false;
+    }
+
+    //for stopping the webcam, works for all browsers except IE
+    function stopWebcam() {
+        webcamStream.getVideoTracks()[0].stop();
+        //remove preview once done
+        removePreview();
+    }
+            //call-back function for webcam option
+    function errorWebCam(err) {
+        document.getElementById("userMsg").innerHTML = "An error occurred";
+             console.error('An error occurred: [CODE ' + error.code + ']');
+             console.log(err);
+        }
+
+        //gets a snapshot of the current video stream
+        function getSnapshot() {
+            // If the current context is WebRTC/getUserMedia (something
+            // passed back from the shim to avoid doing further feature
+            // detection), we handle getting video/images for our canvas
+            // from the HTML5 <video> element.
+            if (options.context === 'webrtc') {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                var video = document.getElementsByTagName('video')[0];
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height - 100);
+                //display message textbox
+                document.getElementById("msgSection").style.display = "block";
+                //stop webcam
+                webcamStream.getVideoTracks()[0].stop();
+                //remove preview once done
+                removePreview();
+                imgChosen = true;
+
+                // Otherwise, if the context is Flash, we ask the shim to
+                // directly call window.webcam, where our shim is located
+                // and ask it to capture for us.
+                //This is for IE and other browsers that do not support getmedia
+            } else if (options.context === 'flash') {
+                //fall-back options
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                window.webcam = options;
+                window.webcam.capture();
+                imgChosen = true;
+                //stop webcam TODO
+
+                //remove preview once done
+                removePreview();
+            }
+            else {
+                console.log('No context was supplied to getSnapshot()');
+            }
+        }
+    
+        //removes video preview element
+        function removePreview() {
+            var vid = document.getElementById("webcam");
+            preview.removeChild(vid);
+        }
+
+</script>

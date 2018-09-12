@@ -1,0 +1,12 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\PostCardCreator",
+    "\\PostCardCreator\\Scripts",
+    "\\PostCardCreator\\Scripts\\fallback",
+    "\\PostCardCreator\\Views",
+    "\\PostCardCreator\\Views\\Home"
+  ],
+  "SelectedNode": "\\PostCardCreator\\Views\\Home\\Index.cshtml",
+  "PreviewInSolutionExplorer": false
+}
